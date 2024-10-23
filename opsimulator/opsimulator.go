@@ -35,7 +35,6 @@ import (
 const (
 	host                        = "127.0.0.1"
 	l2NativeSuperchainERC20Addr = "0x420beeF000000000000000000000000000000001"
-	superchainTokenBridgeAddr   = "0x4200000000000000000000000000000000000028"
 )
 
 type OpSimulator struct {
@@ -203,7 +202,7 @@ func (opSim *OpSimulator) startBackgroundTasks() {
 
 	// Log SuperchainTokenBridge events
 	opSim.bgTasks.Go(func() error {
-		superchainTokenBridge, err := bindings.NewSuperchainTokenBridge(common.HexToAddress(superchainTokenBridgeAddr), opSim.Chain.EthClient())
+		superchainTokenBridge, err := bindings.NewSuperchainTokenBridge(predeploys.SuperchainTokenBridgeAddr, opSim.Chain.EthClient())
 		if err != nil {
 			return fmt.Errorf("failed to create SuperchainTokenBridge contract: %w", err)
 		}
@@ -241,27 +240,27 @@ func (opSim *OpSimulator) startBackgroundTasks() {
 			return fmt.Errorf("failed to create SuperchainWETH contract: %w", err)
 		}
 
-		sendEventChan := make(chan *bindings.SuperchainWETHSendERC20)
-		sendSub, err := superchainWETH.WatchSendERC20(&bind.WatchOpts{Context: opSim.bgTasksCtx}, sendEventChan, nil, nil)
+		mintEventChan := make(chan *bindings.SuperchainWETHCrosschainMinted)
+		mintSub, err := superchainWETH.WatchCrosschainMinted(&bind.WatchOpts{Context: opSim.bgTasksCtx}, mintEventChan, nil)
 		if err != nil {
 			return fmt.Errorf("failed to subscribe to SuperchainWETH#SendERC20: %w", err)
 		}
 
-		relayEventChan := make(chan *bindings.SuperchainWETHRelayERC20)
-		relaySub, err := superchainWETH.WatchRelayERC20(&bind.WatchOpts{Context: opSim.bgTasksCtx}, relayEventChan, nil, nil)
+		burnEventChan := make(chan *bindings.SuperchainWETHCrosschainBurnt)
+		burnSub, err := superchainWETH.WatchCrosschainBurnt(&bind.WatchOpts{Context: opSim.bgTasksCtx}, burnEventChan, nil)
 		if err != nil {
 			return fmt.Errorf("failed to subscribe to SuperchainWETH#RelayERC20: %w", err)
 		}
 
 		for {
 			select {
-			case event := <-sendEventChan:
-				opSim.log.Info("SuperchainWETH#SendERC20", "from", event.From, "to", event.To, "amount", event.Amount, "destination", event.Destination)
-			case event := <-relayEventChan:
-				opSim.log.Info("SuperchainWETH#RelayERC20", "from", event.From, "to", event.To, "amount", event.Amount, "source", event.Source)
+			case event := <-mintEventChan:
+				opSim.log.Info("SuperchainWETH#CrosschainMint", "to", event.To, "amount", event.Amount)
+			case event := <-burnEventChan:
+				opSim.log.Info("SuperchainWETH#CrosschainBurn", "from", event.From, "amount", event.Amount)
 			case <-opSim.bgTasksCtx.Done():
-				sendSub.Unsubscribe()
-				relaySub.Unsubscribe()
+				mintSub.Unsubscribe()
+				burnSub.Unsubscribe()
 				return nil
 			}
 		}
@@ -392,12 +391,12 @@ func (opSim *OpSimulator) checkInteropInvariants(ctx context.Context, tx *types.
 			}
 
 			sourceClient := sourceChain.EthClient()
-			identifierBlock, err := sourceClient.BlockByNumber(ctx, identifier.BlockNumber)
+			identifierBlockHeader, err := sourceClient.HeaderByNumber(ctx, identifier.BlockNumber)
 			if err != nil {
 				return fmt.Errorf("failed to fetch executing message block: %w", err)
 			}
 
-			if identifier.Timestamp.Cmp(new(big.Int).SetUint64(identifierBlock.Time())) != 0 {
+			if identifier.Timestamp.Cmp(new(big.Int).SetUint64(identifierBlockHeader.Time)) != 0 {
 				return fmt.Errorf("executing message identifier does not match block timestamp: %w", err)
 			}
 

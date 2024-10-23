@@ -5,9 +5,9 @@ import {Test} from "forge-std/Test.sol";
 
 import {Predeploys} from "@contracts-bedrock/libraries/Predeploys.sol";
 
-import {ERC20} from "@solady/tokens/ERC20.sol";
+import {ERC20} from "@solady-v0.0.245/tokens/ERC20.sol";
 
-import {L2NativeSuperchainERC20, ZeroAddress} from "src/L2NativeSuperchainERC20.sol";
+import {L2NativeSuperchainERC20, ZeroAddress} from "../src/L2NativeSuperchainERC20.sol";
 import {ICrosschainERC20} from "@contracts-bedrock/L2/interfaces/ICrosschainERC20.sol";
 import {ISuperchainERC20} from "@contracts-bedrock/L2/interfaces/ISuperchainERC20.sol";
 

@@ -19,29 +19,23 @@ test-go:
 start:
     go run ./...
 
-clean-lib:
-    rm -rf lib
+install-abigen:
+  go install github.com/ethereum/go-ethereum/cmd/abigen@$(jq -r .abigen < versions.json)
 
-checkout-optimism-monorepo:
-    rm -rf lib/optimism
-    mkdir -p lib/optimism && \
-    cd lib/optimism && \
-    git init && \
-    git remote add origin https://github.com/ethereum-optimism/optimism.git && \
-    git fetch --depth=1 origin $(cat ../../monorepo-commit-hash) && \
-    git reset --hard FETCH_HEAD && \
-    git submodule update --init --recursive --progress --depth=1
+force-install-monorepo-version:
+    cd contracts/lib/optimism && \
+    forge install ethereum-optimism/optimism@$(cat ../../../monorepo-commit-hash) --no-commit
 
 calculate-artifact-url: 
     #!/usr/bin/env bash
-    cd lib/optimism/packages/contracts-bedrock && \
+    cd contracts/lib/optimism/packages/contracts-bedrock && \
     checksum=$(bash scripts/ops/calculate-checksum.sh) && \
     echo "https://storage.googleapis.com/oplabs-contract-artifacts/artifacts-v1-$checksum.tar.gz"
 
-generate-monorepo-bindings:
+generate-monorepo-bindings: install-abigen
     ./scripts/generate-bindings.sh -u $(just calculate-artifact-url) -n CrossL2Inbox,L2ToL2CrossDomainMessenger,L1BlockInterop,SuperchainWETH,SuperchainERC20,SuperchainTokenBridge -o ./bindings
 
-generate-genesis: build-contracts checkout-optimism-monorepo
+generate-genesis: build-contracts
     go run ./genesis/cmd/main.go --monorepo-artifacts $(just calculate-artifact-url) --periphery-artifacts ./contracts/out --outdir ./genesis/generated
 
 generate-all: generate-genesis generate-monorepo-bindings
