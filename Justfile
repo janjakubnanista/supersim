@@ -19,29 +19,43 @@ test-go:
 start:
     go run ./...
 
-clean-lib:
-    rm -rf lib
+version-monorepo-contracts:
+    cd contracts/lib/optimism && \
+    git rev-parse HEAD
 
-checkout-optimism-monorepo:
-    rm -rf lib/optimism
-    mkdir -p lib/optimism && \
-    cd lib/optimism && \
-    git init && \
-    git remote add origin https://github.com/ethereum-optimism/optimism.git && \
-    git fetch --depth=1 origin $(cat ../../monorepo-commit-hash) && \
-    git reset --hard FETCH_HEAD && \
-    git submodule update --init --recursive --progress --depth=1
+version-monorepo-go:
+    go list -m -f '{{"{{"}}.Version{{"}}"}}' github.com/ethereum-optimism/optimism
+
+check-monorepo-versions:
+    #!/usr/bin/env bash
+    ./scripts/check-versions.sh $(just version-monorepo-contracts) $(just version-monorepo-go)
+
+fetch-monorepo-contracts version:
+    cd contracts/lib/optimism && \
+    git fetch origin {{version}}
+
+install-monorepo-go version:
+    go get github.com/ethereum-optimism/optimism@{{version}}
+
+install-monorepo-contracts version: (fetch-monorepo-contracts version)
+    cd contracts && \
+    forge install ethereum-optimism/optimism@{{version}} --no-commit
+
+install-monorepo version: (install-monorepo-go version) (install-monorepo-contracts version)
+
+install-abigen:
+  go install github.com/ethereum/go-ethereum/cmd/abigen@$(jq -r .abigen < versions.json)
 
 calculate-artifact-url: 
     #!/usr/bin/env bash
-    cd lib/optimism/packages/contracts-bedrock && \
+    cd contracts/lib/optimism/packages/contracts-bedrock && \
     checksum=$(bash scripts/ops/calculate-checksum.sh) && \
     echo "https://storage.googleapis.com/oplabs-contract-artifacts/artifacts-v1-$checksum.tar.gz"
 
-generate-monorepo-bindings:
+generate-monorepo-bindings: install-abigen
     ./scripts/generate-bindings.sh -u $(just calculate-artifact-url) -n CrossL2Inbox,L2ToL2CrossDomainMessenger,L1BlockInterop,SuperchainWETH,SuperchainERC20,SuperchainTokenBridge -o ./bindings
 
-generate-genesis: build-contracts checkout-optimism-monorepo
+generate-genesis: build-contracts
     go run ./genesis/cmd/main.go --monorepo-artifacts $(just calculate-artifact-url) --periphery-artifacts ./contracts/out --outdir ./genesis/generated
 
-generate-all: generate-genesis generate-monorepo-bindings
+generate-all version: (install-monorepo version) generate-genesis generate-monorepo-bindings

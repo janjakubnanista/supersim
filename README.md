@@ -59,9 +59,13 @@ L2s: Predeploy Contracts Spec ( https://specs.optimism.io/protocol/predeploys.ht
 ```
 
 
-### 4. Start testing multichain features 🚀
+### 4. Start testing multichain features 🚀 
 
-Some examples below! 
+For **getting up to speed with supersim**, watch the [**🎥 Supersim 101 Training Session video**](https://www.youtube.com/live/Kh4fNshcl5Y?t=30s)
+
+[<img src="docs/src/supersim-training-sessions-video-cover.png"  />](https://www.youtube.com/live/Kh4fNshcl5Y?t=30s)
+
+More examples below!
 
 ## 🐋 Running with Docker
 
@@ -148,7 +152,7 @@ In a few seconds, you should see the RelayedMessage on chain 902:
 
 ```sh
 # example
-INFO [08-30|14:30:14.698] L2ToL2CrossChainMessenger#RelayedMessage sourceChainID=901 destinationChainID=902 nonce=0 sender=0x4200000000000000000000000000000000000028 target=0x4200000000000000000000000000000000000028
+INFO [08-30|14:30:14.698] SuperchainTokenBridge#RelayERC20 token=0x420beeF000000000000000000000000000000001 from=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 to=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 amount=1000 source=901
 ```
 **5. Check the balance on chain 902** 
 

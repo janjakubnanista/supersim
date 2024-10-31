@@ -135,6 +135,7 @@ func (a *Anvil) Start(ctx context.Context) error {
 
 		logFile = tempLogFile
 		// Clean up the temp log file
+		// TODO (https://github.com/ethereum-optimism/supersim/issues/205) This results in the temp file being deleted right away instead of after shutdown.
 		defer a.removeFile(logFile)
 	} else {
 		// Expand the path to the log file
@@ -310,7 +311,7 @@ func (a *Anvil) SimulatedLogs(ctx context.Context, tx *types.Transaction) ([]typ
 
 	txArgs := txArgs{From: from, To: tx.To(), Gas: hexutil.Uint64(tx.Gas()), GasPrice: (*hexutil.Big)(tx.GasPrice()), Data: tx.Data(), Value: (*hexutil.Big)(tx.Value())}
 	result := callFrame{}
-	if err = a.rpcClient.CallContext(ctx, &result, "debug_traceCall", txArgs, "latest", logTracerParams); err != nil {
+	if err := a.rpcClient.CallContext(ctx, &result, "debug_traceCall", txArgs, "latest", logTracerParams); err != nil {
 		return nil, err
 	}
 

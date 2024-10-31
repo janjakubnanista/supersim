@@ -115,8 +115,12 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 				if err := interop.Configure(ctx, chain); err != nil {
 					errs[i] = fmt.Errorf("failed to configure interop for chain %s: %w", chain.Config().Name, err)
 				}
+				wg.Done()
 			}(i)
 		}
+
+		wg.Wait()
+
 		if err := errors.Join(errs...); err != nil {
 			return err
 		}
@@ -140,7 +144,6 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 func (o *Orchestrator) Stop(ctx context.Context) error {
 	var errs []error
 	o.log.Debug("stopping orchestrator")
-
 	if o.config.InteropEnabled {
 		if o.l2ToL2MsgRelayer != nil {
 			o.log.Info("stopping L2ToL2CrossDomainMessenger autorelayer")
@@ -220,7 +223,7 @@ func (o *Orchestrator) ConfigAsString() string {
 	l1Cfg := o.l1Chain.Config()
 	fmt.Fprintf(&b, "L1: Name: %s  ChainID: %d  RPC: %s  LogPath: %s\n", l1Cfg.Name, l1Cfg.ChainID, o.l1Chain.Endpoint(), o.l1Chain.LogPath())
 
-	fmt.Fprintf(&b, "\nL2s: Predeploy Contracts Spec ( %s )\n", "https://specs.optimism.io/protocol/predeploys.html")
+	fmt.Fprintf(&b, "\nL2: Predeploy Contracts Spec ( %s )\n", "https://specs.optimism.io/protocol/predeploys.html")
 	opSims := make([]*opsimulator.OpSimulator, 0, len(o.l2OpSims))
 	for _, chain := range o.l2OpSims {
 		opSims = append(opSims, chain)
